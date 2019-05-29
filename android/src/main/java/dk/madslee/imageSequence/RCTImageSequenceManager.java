@@ -56,4 +56,14 @@ public class RCTImageSequenceManager extends SimpleViewManager<RCTImageSequenceV
     public void setLoop(final RCTImageSequenceView view, Boolean loop) {
         view.setLoop(loop);
     }
+
+    /**
+     * 设置两次动画之间的间隔
+     * @param view
+     * @param interval 间隔，单位：秒
+     */
+    @ReactProp(name = "interval")
+    public void setInterval(final RCTImageSequenceView view, Integer interval) {
+        view.setInterval(interval);
+    }
 }

@@ -4,8 +4,10 @@ import android.content.Context;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Rect;
 import android.graphics.drawable.AnimationDrawable;
 import android.graphics.drawable.BitmapDrawable;
+import android.os.Handler;
 import android.util.Log;
 import android.os.AsyncTask;
 import android.widget.ImageView;
@@ -15,6 +17,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Timer;
 import java.util.concurrent.RejectedExecutionException;
 
 
@@ -24,6 +27,8 @@ public class RCTImageSequenceView extends ImageView {
     private ArrayList<AsyncTask> activeTasks;
     private HashMap<Integer, Bitmap> bitmaps;
     private RCTResourceDrawableIdHelper resourceDrawableIdHelper;
+    private Integer interval = 0;
+    private AnimationDrawable mAnimationDrawable;
 
     public RCTImageSequenceView(Context context) {
         super(context);
@@ -129,7 +134,7 @@ public class RCTImageSequenceView extends ImageView {
             try {
                 task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
             } catch (RejectedExecutionException e){
-                Log.e("react-native-image-sequence", "DownloadImageTask failed" + e.getMessage());
+                Log.e("image-sequence", "DownloadImageTask failed" + e.getMessage());
                 break;
             }
         }
@@ -153,6 +158,13 @@ public class RCTImageSequenceView extends ImageView {
         }
     }
 
+    public void setInterval(Integer interval) {
+        this.interval = interval;
+        if (isLoaded()) {
+            setupAnimationDrawable();
+        }
+    }
+
     private boolean isLoaded() {
         return !isLoading() && bitmaps != null && !bitmaps.isEmpty();
     }
@@ -167,10 +179,35 @@ public class RCTImageSequenceView extends ImageView {
             BitmapDrawable drawable = new BitmapDrawable(this.getResources(), bitmaps.get(index));
             animationDrawable.addFrame(drawable, 1000 / framesPerSecond);
         }
-
-        animationDrawable.setOneShot(!this.loop);
-
+        // 当没有设置动画间隔的时候，根据 this.loop 的值设置动画是否循环播放
+        // 当设置了动画间隔，直接设置动画不循环播放，通过 timertask 模拟循环播放
+        if (this.interval > 0) {
+            animationDrawable.setOneShot(true);
+        } else {
+            animationDrawable.setOneShot(!this.loop);
+        }
         this.setImageDrawable(animationDrawable);
-        animationDrawable.start();
+        this.mAnimationDrawable = animationDrawable;
+        playAnimation();
+    }
+
+    /**
+     * 播放动画，根据 interval 的值是否设定决定是否通过 timertask 循环播放
+     */
+    private void playAnimation() {
+        // 当没有 drawable 对象或该视图不可见时不执行动画播放逻辑
+        if (mAnimationDrawable == null) {
+            return;
+        }
+        if (interval > 0) {
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    playAnimation();
+                }
+            }, interval * 1000);
+        }
+        mAnimationDrawable.stop();
+        mAnimationDrawable.start();
     }
 }
