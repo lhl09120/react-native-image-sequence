@@ -10,6 +10,8 @@
     NSMutableDictionary *_activeTasks;
     NSMutableDictionary *_imagesLoaded;
     BOOL _loop;
+    NSUInteger _interval;
+    NSTimer *_timer;
 }
 
 - (void)setImages:(NSArray *)images {
@@ -82,13 +84,13 @@
     self.image = nil;
     self.animationDuration = images.count * (1.0f / _framesPerSecond);
     self.animationImages = images;
-    self.animationRepeatCount = _loop ? 0 : 1;
+    [self setAnimationRepeatCountByIntervalAndLoop];
     if (!_loop) {
         [self performSelector:@selector(animationDidFinish)
                    withObject:nil
                    afterDelay:self.animationDuration];
     }
-    [self startAnimating];
+    [self playAnimation];
 }
 
 - (void)setFramesPerSecond:(NSUInteger)framesPerSecond {
@@ -98,11 +100,55 @@
         self.animationDuration = self.animationImages.count * (1.0f / _framesPerSecond);
     }
 }
+/**
+ 设置两次动画播放的间隔
+
+ @param interval 间隔，单位：秒
+ */
+- (void)setInterval:(NSUInteger)interval {
+    _interval = interval;
+    [self setAnimationRepeatCountByIntervalAndLoop];
+}
 
 - (void)setLoop:(NSUInteger)loop {
     _loop = loop;
-    
-    self.animationRepeatCount = _loop ? 0 : 1;
+    [self setAnimationRepeatCountByIntervalAndLoop];
 }
 
+/**
+ 当设置了动画间隔以后，动画直接设置为不循环播放，通过定时任务控制动画播放
+ */
+- (void)setAnimationRepeatCountByIntervalAndLoop {
+    if (_interval > 0) {
+        self.animationRepeatCount = 1;
+    } else {
+        self.animationRepeatCount = _loop ? 0 : 1;
+    }
+}
+
+/**
+ 当视图变得不可见时，如果存在定时任务，则将其取消。
+
+ @param newWindow
+ */
+-(void)willMoveToWindow:(UIWindow *)newWindow {
+    [super willMoveToWindow:newWindow];
+    if (newWindow == nil && _timer != nil) {
+        [_timer invalidate];
+    }
+}
+
+/**
+ 播放动画，根据 interval 是否设定决定是否启用定时任务
+ */
+- (void)playAnimation {
+    if (self.animationImages == nil) {
+        return;
+    }
+    if (_interval > 0) {
+        _timer = [NSTimer scheduledTimerWithTimeInterval:_interval target:self selector:@selector(playAnimation) userInfo:nil repeats:NO];
+    }
+    [self stopAnimating];
+    [self startAnimating];
+}
 @end
