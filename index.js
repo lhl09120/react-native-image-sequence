@@ -27,16 +27,14 @@ class ImageSequence extends Component {
 ImageSequence.defaultProps = {
   startFrameIndex: 0,
   framesPerSecond: 24,
-  loop: true,
-  interval: 0
+  loop: true
 };
 
 ImageSequence.propTypes = {
   startFrameIndex: number,
   images: array.isRequired,
   framesPerSecond: number,
-  loop: bool,
-  interval: number
+  loop: bool
 };
 
 const RCTImageSequence = requireNativeComponent('RCTImageSequence', {
@@ -46,8 +44,7 @@ const RCTImageSequence = requireNativeComponent('RCTImageSequence', {
       uri: string.isRequired
     })).isRequired,
     framesPerSecond: number,
-    loop: bool,
-    interval: number,
+    loop: bool
   },
 });
 
