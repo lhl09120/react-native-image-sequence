@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Rect;
 import android.graphics.drawable.AnimationDrawable;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Handler;
@@ -17,7 +16,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Timer;
 import java.util.concurrent.RejectedExecutionException;
 
 
@@ -27,13 +25,37 @@ public class RCTImageSequenceView extends ImageView {
     private ArrayList<AsyncTask> activeTasks;
     private HashMap<Integer, Bitmap> bitmaps;
     private RCTResourceDrawableIdHelper resourceDrawableIdHelper;
-    private Integer interval = 0;
     private AnimationDrawable mAnimationDrawable;
+    private Integer interval = 0;
+    private Handler intervalHandler;
+    private Runnable intervalRunnable;
 
     public RCTImageSequenceView(Context context) {
         super(context);
 
         resourceDrawableIdHelper = new RCTResourceDrawableIdHelper();
+    }
+
+    /**
+     * 下面两个方法都是当视图被移除时触发，此时将定时任务移除
+     */
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        if (intervalHandler != null && intervalRunnable != null) {
+            intervalHandler.removeCallbacks(intervalRunnable);
+            intervalRunnable = null;
+            intervalHandler = null;
+        }
+    }
+    @Override
+    public void onStartTemporaryDetach() {
+        super.onStartTemporaryDetach();
+        if (intervalHandler != null && intervalRunnable != null) {
+            intervalHandler.removeCallbacks(intervalRunnable);
+            intervalRunnable = null;
+            intervalHandler = null;
+        }
     }
 
     private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
@@ -200,12 +222,15 @@ public class RCTImageSequenceView extends ImageView {
             return;
         }
         if (interval > 0) {
-            new Handler().postDelayed(new Runnable() {
+            // 将 runnable 赋值到私有变量，当视图被移除时取消定时任务
+            intervalHandler = new Handler();
+            intervalRunnable = new Runnable() {
                 @Override
                 public void run() {
                     playAnimation();
                 }
-            }, interval * 1000);
+            };
+            intervalHandler.postDelayed(intervalRunnable, interval * 1000);
         }
         mAnimationDrawable.stop();
         mAnimationDrawable.start();
